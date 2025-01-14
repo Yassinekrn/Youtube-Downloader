@@ -1,2 +1,7 @@
+from gui.app import DownloaderApp
+import tkinter as tk
+
 if __name__ == "__main__":
-    print("Welcome to the YouTube Downloader!")
+    root = tk.Tk()
+    app = DownloaderApp(root)
+    root.mainloop()
