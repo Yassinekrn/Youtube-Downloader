@@ -1,37 +1,58 @@
-# Foobar
+# YouTube Video Downloader
 
-Foobar is a Python library for dealing with word pluralization.
+A simple, extensible Python application for downloading YouTube videos using `yt-dlp`. This app allows you to paste a video URL, specify a save location, and download the video in the best available quality.
 
-## Installation
+---
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+## **Setup Instructions**
+
+### 1. **Clone the Repository**
 
 ```bash
-pip install foobar
+git clone <repository-url>
+cd <repository-folder>
 ```
 
-## Usage
+### 2. **Create a Virtual Environment**
 
-```python
-import foobar
-
-# returns 'words'
-foobar.pluralize('word')
-
-# returns 'geese'
-foobar.pluralize('goose')
-
-# returns 'phenomenon'
-foobar.singularize('phenomena')
+```bash
+python -m venv venv
 ```
 
-## Contributing
+-   Activate the virtual environment:
+    -   **Windows**:
+        ```bash
+        venv\Scripts\activate
+        ```
+    -   **macOS/Linux**:
+        ```bash
+        source venv/bin/activate
+        ```
 
-Pull requests are welcome. For major changes, please open an issue first
-to discuss what you would like to change.
+### 3. **Install Dependencies**
 
-Please make sure to update tests as appropriate.
+Make sure you have `pip` installed and up to date, then run:
 
-## License
+```bash
+pip install -r requirements.txt
+```
 
-[MIT](https://choosealicense.com/licenses/mit/)
+### 4. **Run the Application**
+
+Run the main entry point of the application:
+
+```bash
+python main.py
+```
+
+---
+
+## **Additional Information**
+
+-   Ensure you have Python 3.7 or higher installed.
+-   Update `requirements.txt` for any additional dependencies if needed.
+-   Use `logger` to monitor the app’s internal processes via the console.
+
+---
+
+Happy downloading! 🎉

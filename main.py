@@ -1,7 +1,7 @@
-from gui.app import DownloaderApp
+from gui.app import VideoDownloaderApp
 import tkinter as tk
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = DownloaderApp(root)
+    app = VideoDownloaderApp(root)
     root.mainloop()
