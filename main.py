@@ -1,7 +1,10 @@
+import ttkbootstrap as tb
 from gui.app import VideoDownloaderApp
-import tkinter as tk
 
-if __name__ == "__main__":
-    root = tk.Tk()
+def main():
+    root = tb.Window(themename="darkly")
     app = VideoDownloaderApp(root)
     root.mainloop()
+
+if __name__ == "__main__":
+    main()

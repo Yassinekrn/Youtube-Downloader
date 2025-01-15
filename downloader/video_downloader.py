@@ -1,32 +1,70 @@
 from utils.logger import logger
+from typing import Callable, Dict, Any, Optional
+import yt_dlp
+import os
+from utils.validator import sanitize_filename, get_available_filename
 
-logger.info("Starting video download...")
-try:
-    from utils.validator import sanitize_filename
-    from utils.validator import get_available_filename
-    import yt_dlp
-    import os
+class VideoDownloader:
+    """
+    Handles downloading videos from YouTube using yt-dlp with progress tracking.
+    """
 
-    class VideoDownloader:
+    def __init__(self, output_dir: str):
         """
-        Handles downloading videos from YouTube using yt-dlp.
+        Initialize the downloader with a target output directory.
+        :param output_dir: Directory where files will be saved.
         """
+        self.output_dir = output_dir
+        self._progress_callback: Optional[Callable] = None
+        self._current_filename: Optional[str] = None
 
-        def __init__(self, output_dir: str):
-            """
-            Initialize the downloader with a target output directory.
-            :param output_dir: Directory where files will be saved.
-            """
-            self.output_dir = output_dir
+    def set_progress_callback(self, callback: Callable[[Dict[str, Any]], None]) -> None:
+        """
+        Set a callback function to receive progress updates.
+        :param callback: Function that takes a dictionary of progress information
+        """
+        self._progress_callback = callback
 
-        def download_video(self, url: str) -> None:
-            """
-            Downloads a video from YouTube.
-            :param url: The URL of the YouTube video.
-            """
-            if not self._validate_url(url):
-                raise ValueError("Invalid YouTube URL")
-            
+    def _progress_hook(self, d: Dict[str, Any]) -> None:
+        """
+        Internal progress hook for yt-dlp.
+        """
+        if self._progress_callback is None:
+            return
+
+        # Prepare progress information
+        progress_info = {
+            'status': d.get('status', 'unknown'),
+            'filename': self._current_filename,
+            'elapsed': d.get('elapsed', 0),
+            'total_bytes': d.get('total_bytes', 0),
+            'total_bytes_estimate': d.get('total_bytes_estimate', 0),
+            'downloaded_bytes': d.get('downloaded_bytes', 0),
+            'speed': d.get('speed', 0),
+            'eta': d.get('eta', 0),
+            'percentage': 0.0
+        }
+
+        # Calculate percentage
+        if d['status'] == 'downloading':
+            if 'total_bytes' in d and d['total_bytes'] > 0:
+                progress_info['percentage'] = (d['downloaded_bytes'] / d['total_bytes']) * 100
+            elif 'total_bytes_estimate' in d and d['total_bytes_estimate'] > 0:
+                progress_info['percentage'] = (d['downloaded_bytes'] / d['total_bytes_estimate']) * 100
+
+        # Call the callback with progress information
+        self._progress_callback(progress_info)
+
+    def download_video(self, url: str) -> Dict[str, Any]:
+        """
+        Downloads a video from YouTube with progress tracking.
+        :param url: The URL of the YouTube video.
+        :return: Dictionary containing download results
+        """
+        if not self._validate_url(url):
+            raise ValueError("Invalid YouTube URL")
+        
+        try:
             # Get video info first
             with yt_dlp.YoutubeDL() as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -38,17 +76,19 @@ try:
             
             # Get an available filename with the actual extension
             final_filename = get_available_filename(self.output_dir, base_filename)
+            self._current_filename = final_filename
+            
             logger.info(f"Video title sanitized: {sanitized_title}")
             logger.info(f"Final filename: {final_filename}")
 
-            # yt-dlp options with exact filename (no template)
+            # yt-dlp options
             options = {
                 "format": "best",
                 "outtmpl": os.path.join(self.output_dir, final_filename),
                 "quiet": False,
                 "no_warnings": False,
-                # Prevent auto-numbering
                 "nooverwrites": True,
+                "progress_hooks": [self._progress_hook],
             }
 
             # Download the video
@@ -56,16 +96,26 @@ try:
                 ydl.download([url])
             
             logger.info("Download completed successfully.")
+            
+            return {
+                'status': 'completed',
+                'filename': final_filename,
+                'filepath': os.path.join(self.output_dir, final_filename),
+                'title': info.get('title'),
+                'duration': info.get('duration'),
+                'filesize': info.get('filesize'),
+                'format': info.get('format')
+            }
 
-        @staticmethod
-        def _validate_url(url: str) -> bool:
-            """
-            Validates if a URL is a YouTube link.
-            :param url: The URL to validate.
-            :return: True if valid, False otherwise.
-            """
-            return "youtube.com/watch" in url or "youtu.be/" in url
+        except Exception as e:
+            logger.error(f"Error during download: {str(e)}")
+            raise
 
-except Exception as e:
-    logger.error(f"Error during download: {e}")
-    raise
+    @staticmethod
+    def _validate_url(url: str) -> bool:
+        """
+        Validates if a URL is a YouTube link.
+        :param url: The URL to validate.
+        :return: True if valid, False otherwise.
+        """
+        return "youtube.com/watch" in url or "youtu.be/" in url
