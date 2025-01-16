@@ -89,3 +89,18 @@
 2025-01-16 00:35:30,876 - INFO - Video title sanitized: when the youtube video knows you too well
 2025-01-16 00:35:30,877 - INFO - Final filename: when the youtube video knows you too well(1).webm
 2025-01-16 00:35:36,696 - INFO - Download completed successfully.
+2025-01-16 10:10:33,941 - INFO - Video title sanitized: In Your Past
+2025-01-16 10:10:33,941 - INFO - Final filename: In Your Past.webm
+2025-01-16 10:10:33,941 - ERROR - Error during download: 'VideoDownloader' object has no attribute 'format_var'
+2025-01-16 10:10:33,942 - ERROR - Download thread error: 'VideoDownloader' object has no attribute 'format_var'
+2025-01-16 10:15:19,785 - INFO - Video title sanitized: One Piece_ Katakuri Theme [Epic Orchestral Cinematic Remix] ft. JEZMOT
+2025-01-16 10:15:19,785 - INFO - Final filename: One Piece_ Katakuri Theme [Epic Orchestral Cinematic Remix] ft. JEZMOT.webm
+2025-01-16 10:15:30,301 - INFO - Download completed successfully.
+2025-01-16 10:16:22,958 - INFO - Video title sanitized: One Piece_ Katakuri Theme [Epic Orchestral Cinematic Remix] ft. JEZMOT
+2025-01-16 10:16:22,958 - INFO - Final filename: One Piece_ Katakuri Theme [Epic Orchestral Cinematic Remix] ft. JEZMOT(1).webm
+2025-01-16 10:16:39,307 - INFO - Download completed successfully.
+2025-01-16 10:17:06,552 - INFO - Video title sanitized: One Piece_ Katakuri Theme [Epic Orchestral Cinematic Remix] ft. JEZMOT
+2025-01-16 10:17:06,553 - INFO - Final filename: One Piece_ Katakuri Theme [Epic Orchestral Cinematic Remix] ft. JEZMOT(2).webm
+2025-01-16 10:17:12,122 - INFO - Download completed successfully.
+2025-01-16 10:17:44,031 - INFO - Theme toggled to litera
+2025-01-16 10:17:50,734 - INFO - Theme toggled to darkly

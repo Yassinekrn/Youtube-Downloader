@@ -9,12 +9,14 @@ class VideoDownloader:
     Handles downloading videos from YouTube using yt-dlp with progress tracking.
     """
 
-    def __init__(self, output_dir: str):
+    def __init__(self, output_dir: str, format: str = "video+audio"):
         """
         Initialize the downloader with a target output directory.
         :param output_dir: Directory where files will be saved.
+        :param format: Format of the download (video, audio, or video+audio).
         """
         self.output_dir = output_dir
+        self.format = format
         self._progress_callback: Optional[Callable] = None
         self._current_filename: Optional[str] = None
 
@@ -83,7 +85,7 @@ class VideoDownloader:
 
             # yt-dlp options
             options = {
-                "format": "best",
+                "format": self._get_format_option(),
                 "outtmpl": os.path.join(self.output_dir, final_filename),
                 "quiet": False,
                 "no_warnings": False,
@@ -110,6 +112,17 @@ class VideoDownloader:
         except Exception as e:
             logger.error(f"Error during download: {str(e)}")
             raise
+
+    def _get_format_option(self) -> str:
+        """
+        Get the format option for yt-dlp based on the desired format.
+        :return: Format option string for yt-dlp.
+        """
+        if self.format == "video":
+            return "bestvideo"
+        elif self.format == "audio":
+            return "bestaudio"
+        return "best"
 
     @staticmethod
     def _validate_url(url: str) -> bool:

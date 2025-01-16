@@ -67,6 +67,26 @@ class VideoDownloaderApp:
         )
         self.browse_btn.pack(side=LEFT)
 
+        # Format Selection Dropdown
+        self.format_frame = ttk.Frame(self.input_frame)
+        self.format_frame.pack(fill=X, padx=5, pady=5)
+        self.format_label = ttk.Label(self.format_frame, text="Format:")
+        self.format_label.pack(side=LEFT, padx=(0, 5))
+        self.format_var = tk.StringVar(value="Video & Audio (Default)")
+        self.format_mapping = {
+            "Video & Audio (Default)": "video+audio",
+            "Video Only": "video",
+            "Audio Only": "audio"
+        }
+        self.format_dropdown = ttk.Combobox(
+            self.format_frame,
+            textvariable=self.format_var,
+            values=list(self.format_mapping.keys()),
+            state="readonly"
+        )
+        self.format_dropdown.pack(side=LEFT, fill=X, expand=True)
+        self.format_dropdown.bind("<<ComboboxSelected>>", self.on_format_change)
+
         # Download Controls Frame
         self.controls_frame = ttk.Frame(self.main_container)
         self.controls_frame.pack(fill=X, pady=5)
@@ -230,9 +250,15 @@ class VideoDownloaderApp:
         self.log_text.configure(state="disabled")
         self.log_text.see("end")
 
+    def on_format_change(self, event):
+        selected_format = self.format_var.get()
+        self.log_message(f"Format changed to: {selected_format}")
+
     def download_video(self):
         url = self.url_entry.get().strip()
         output_dir = self.output_entry.get().strip()
+        format_display_value = self.format_var.get()
+        format = self.format_mapping.get(format_display_value, "video+audio")
         
         if not url or not output_dir:
             self.log_message("Please fill in both the YouTube URL and Save Location.", "ERROR")
@@ -244,7 +270,7 @@ class VideoDownloaderApp:
         self.progress_var.set(0)
         
         try:
-            downloader = VideoDownloader(output_dir)
+            downloader = VideoDownloader(output_dir, format)
             self.download_manager.start_download(
                 downloader,
                 url,
