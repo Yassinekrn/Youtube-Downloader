@@ -2,10 +2,14 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+import yt_dlp
 from downloader.video_downloader import VideoDownloader
 from downloader.download_manager import DownloadManager
 from utils.logger import logger
 from datetime import datetime
+import requests
+from PIL import Image, ImageTk
+import io
 
 class VideoDownloaderApp:
     def __init__(self, root):
@@ -87,6 +91,10 @@ class VideoDownloaderApp:
         self.format_dropdown.pack(side=LEFT, fill=X, expand=True)
         self.format_dropdown.bind("<<ComboboxSelected>>", self.on_format_change)
 
+        # Add Fetch Info Button
+        self.fetch_info_button = ttk.Button(self.input_frame, text="Fetch Info", command=self.fetch_video_info)
+        self.fetch_info_button.pack(side=LEFT, padx=5)
+
         # Download Controls Frame
         self.controls_frame = ttk.Frame(self.main_container)
         self.controls_frame.pack(fill=X, pady=5)
@@ -132,6 +140,19 @@ class VideoDownloaderApp:
         
         self.speed_label = ttk.Label(self.status_frame, text="")
         self.speed_label.pack(side=RIGHT)
+
+        # Add Video Info Frame
+        self.video_info_frame = ttk.Frame(self.main_container)
+        self.video_info_frame.pack(fill=X, padx=5, pady=5)
+
+        self.video_title_label = ttk.Label(self.video_info_frame, text="Title: ")
+        self.video_title_label.pack(anchor=W)
+
+        self.video_duration_label = ttk.Label(self.video_info_frame, text="Duration: ")
+        self.video_duration_label.pack(anchor=W)
+
+        self.thumbnail_label = ttk.Label(self.video_info_frame)
+        self.thumbnail_label.pack(anchor=W)
 
         # Logging Area
         self.log_frame = ttk.LabelFrame(self.main_container, text="Logs")
@@ -253,6 +274,37 @@ class VideoDownloaderApp:
     def on_format_change(self, event):
         selected_format = self.format_var.get()
         self.log_message(f"Format changed to: {selected_format}")
+
+    def fetch_video_info(self):
+        url = self.url_entry.get().strip()
+        if not url:
+            self.log_message("Please enter a YouTube URL.", "ERROR")
+            return
+
+        try:
+            with yt_dlp.YoutubeDL() as ydl:
+                info = ydl.extract_info(url, download=False)
+            
+            title = info.get('title', 'N/A')
+            duration = info.get('duration', 0)
+            thumbnail_url = info.get('thumbnail', '')
+            
+            self.video_title_label.config(text=f"Title: {title}")
+            self.video_duration_label.config(text=f"Duration: {duration // 60}:{duration % 60:02d}")
+            
+            if (thumbnail_url):
+                response = requests.get(thumbnail_url)
+                image_data = response.content
+                image = Image.open(io.BytesIO(image_data))
+                image = image.resize((160, 90), Image.LANCZOS)
+                photo = ImageTk.PhotoImage(image)
+                self.thumbnail_label.config(image=photo)
+                self.thumbnail_label.image = photo
+            
+            self.log_message("Video information fetched successfully.")
+        
+        except Exception as e:
+            self.log_message(f"Error fetching video information: {str(e)}", "ERROR")
 
     def download_video(self):
         url = self.url_entry.get().strip()
