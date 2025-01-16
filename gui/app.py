@@ -11,12 +11,22 @@ import requests
 from PIL import Image, ImageTk, ImageDraw
 import io
 import threading
+import os
 
 class VideoDownloaderApp:
     def __init__(self, root):
         self.root = root
         self.root.title("YouTube Video Downloader")
         self.root.geometry("800x500")
+        
+        # Load the icon
+        icon_path = "assets/youtube.png"  # Update the path to your icon
+        icon_image = Image.open(icon_path)
+        icon_image = icon_image.resize((24, 24), Image.LANCZOS)
+        self.icon_photo = ImageTk.PhotoImage(icon_image)
+
+        # Set the title bar icon
+        self.root.iconphoto(False, self.icon_photo)
         
         # Initialize download manager
         self.download_manager = DownloadManager()
@@ -29,9 +39,16 @@ class VideoDownloaderApp:
         self.main_container = ttk.Frame(root)
         self.main_container.pack(fill=BOTH, expand=True, padx=10, pady=5)
         
-        # Create header frame for theme toggle
+        # Create header frame for theme toggle and app name
         self.header_frame = ttk.Frame(self.main_container)
         self.header_frame.pack(fill=X, pady=(0, 10))
+        
+        # Add icon and app name to the header frame
+        self.icon_label = ttk.Label(self.header_frame, image=self.icon_photo)
+        self.icon_label.pack(side=LEFT, padx=(0, 5))
+        
+        self.app_name_label = ttk.Label(self.header_frame, text="YouTube Video Downloader", font=("Helvetica", 16, "bold"))
+        self.app_name_label.pack(side=LEFT, padx=(0, 5))
         
         # Add spacer to push theme toggle to right
         ttk.Label(self.header_frame, text="").pack(side=LEFT, expand=True)
@@ -105,6 +122,7 @@ class VideoDownloaderApp:
             self.controls_frame,
             text="Download",
             command=self.download_video,
+            bootstyle="danger",
             style="primary.TButton",
             width=20
         )
@@ -118,6 +136,15 @@ class VideoDownloaderApp:
             width=20
         )
         self.cancel_button.pack(side=LEFT, padx=5)
+
+        # Add Open Folder Button
+        self.open_folder_button = ttk.Button(
+            self.controls_frame,
+            text="Open Folder",
+            command=self.open_save_location,
+            width=20
+        )
+        self.open_folder_button.pack(side=RIGHT, padx=5)
 
         # Progress Frame
         self.progress_frame = ttk.Frame(self.main_container)
@@ -375,6 +402,15 @@ class VideoDownloaderApp:
         self.progress_label.config(text="Download Cancelled")
         self.speed_label.config(text="")
         self.log_message("Download cancelled by user", "INFO")
+
+    def open_save_location(self):
+        """Open the file explorer at the save location"""
+        save_location = self.output_entry.get().strip()
+        if os.path.isdir(save_location):
+            os.startfile(save_location)
+            self.log_message(f"Opened file explorer at: {save_location}", "INFO")
+        else:
+            self.log_message(f"Invalid save location: {save_location}", "ERROR")
 
 # Initialize the app
 if __name__ == "__main__":

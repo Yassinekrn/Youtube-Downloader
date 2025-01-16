@@ -70,13 +70,16 @@ class VideoDownloader:
             # Get video info first
             with yt_dlp.YoutubeDL() as ydl:
                 info = ydl.extract_info(url, download=False)
-                
-            # Get the extension from the best format
-            ext = info['ext']
+            
+            # Determine the extension based on the format
+            if self.format == "audio":
+                ext = "mp3"
+            else:
+                ext = "mp4"
+            
+            # Sanitize the title and get an available filename
             sanitized_title = sanitize_filename(info.get("title", "video"))
             base_filename = f"{sanitized_title}.{ext}"
-            
-            # Get an available filename with the actual extension
             final_filename = get_available_filename(self.output_dir, base_filename)
             self._current_filename = final_filename
             
@@ -86,11 +89,12 @@ class VideoDownloader:
             # yt-dlp options
             options = {
                 "format": self._get_format_option(),
-                "outtmpl": os.path.join(self.output_dir, final_filename),
+                "outtmpl": os.path.join(self.output_dir, f"{sanitized_title}.%(ext)s"),
                 "quiet": False,
                 "no_warnings": False,
                 "nooverwrites": True,
                 "progress_hooks": [self._progress_hook],
+                "merge_output_format": ext,  # Ensure the output format is set to the determined extension
             }
 
             # Download the video
@@ -122,7 +126,7 @@ class VideoDownloader:
             return "bestvideo"
         elif self.format == "audio":
             return "bestaudio"
-        return "best"
+        return "bestvideo+bestaudio/best"
 
     @staticmethod
     def _validate_url(url: str) -> bool:
@@ -131,4 +135,5 @@ class VideoDownloader:
         :param url: The URL to validate.
         :return: True if valid, False otherwise.
         """
-        return "youtube.com/watch" in url or "youtu.be/" in url
+        return ("youtube.com/watch" in url or "youtu.be/" in url 
+        or "youtube.com/shorts" in url or "youtube.com/playlist" in url)
