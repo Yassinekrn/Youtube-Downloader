@@ -8,7 +8,7 @@ from downloader.download_manager import DownloadManager
 from utils.logger import logger
 from datetime import datetime
 import requests
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
 import io
 
 class VideoDownloaderApp:
@@ -91,14 +91,14 @@ class VideoDownloaderApp:
         self.format_dropdown.pack(side=LEFT, fill=X, expand=True)
         self.format_dropdown.bind("<<ComboboxSelected>>", self.on_format_change)
 
-        # Add Fetch Info Button
-        self.fetch_info_button = ttk.Button(self.input_frame, text="Fetch Info", command=self.fetch_video_info)
-        self.fetch_info_button.pack(side=LEFT, padx=5)
-
         # Download Controls Frame
         self.controls_frame = ttk.Frame(self.main_container)
         self.controls_frame.pack(fill=X, pady=5)
-        
+
+        # Add Fetch Info Button
+        self.fetch_info_button = ttk.Button(self.controls_frame, text="Fetch Info", command=self.fetch_video_info, bootstyle="info")
+        self.fetch_info_button.pack(side=LEFT, padx=5)
+
         # Download Button and Cancel Button
         self.download_button = ttk.Button(
             self.controls_frame,
@@ -145,14 +145,14 @@ class VideoDownloaderApp:
         self.video_info_frame = ttk.Frame(self.main_container)
         self.video_info_frame.pack(fill=X, padx=5, pady=5)
 
-        self.video_title_label = ttk.Label(self.video_info_frame, text="Title: ")
-        self.video_title_label.pack(anchor=W)
-
-        self.video_duration_label = ttk.Label(self.video_info_frame, text="Duration: ")
-        self.video_duration_label.pack(anchor=W)
-
         self.thumbnail_label = ttk.Label(self.video_info_frame)
-        self.thumbnail_label.pack(anchor=W)
+        self.thumbnail_label.grid(row=0, column=0, rowspan=2, padx=5, pady=5)
+
+        self.video_title_label = ttk.Label(self.video_info_frame, text="Title: ", font=("Helvetica", 16, "bold"))
+        self.video_title_label.grid(row=0, column=1, sticky=W)
+
+        self.video_duration_label = ttk.Label(self.video_info_frame, text="Duration: ", foreground="gray")
+        self.video_duration_label.grid(row=1, column=1, sticky=W)
 
         # Logging Area
         self.log_frame = ttk.LabelFrame(self.main_container, text="Logs")
@@ -292,12 +292,23 @@ class VideoDownloaderApp:
             self.video_title_label.config(text=f"Title: {title}")
             self.video_duration_label.config(text=f"Duration: {duration // 60}:{duration % 60:02d}")
             
-            if (thumbnail_url):
+            if thumbnail_url:
                 response = requests.get(thumbnail_url)
                 image_data = response.content
                 image = Image.open(io.BytesIO(image_data))
                 image = image.resize((160, 90), Image.LANCZOS)
-                photo = ImageTk.PhotoImage(image)
+                
+                # Create a mask for rounded corners with a lower radius
+                mask = Image.new("L", image.size, 0)
+                draw = ImageDraw.Draw(mask)
+                radius = 5  # Lower radius value for slight roundness
+                draw.rounded_rectangle([(0, 0), image.size], radius, fill=255)
+                
+                # Apply the mask to the image
+                rounded_image = Image.new("RGBA", image.size)
+                rounded_image.paste(image, (0, 0), mask)
+                
+                photo = ImageTk.PhotoImage(rounded_image)
                 self.thumbnail_label.config(image=photo)
                 self.thumbnail_label.image = photo
             
