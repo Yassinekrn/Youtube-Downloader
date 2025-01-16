@@ -9,8 +9,7 @@ A simple, extensible Python application for downloading YouTube videos using `yt
 ### 1. **Clone the Repository**
 
 ```bash
-git clone <repository-url>
-cd <repository-folder>
+git clone https://github.com/Yassinekrn/Youtube-Downloader.git
 ```
 
 ### 2. **Create a Virtual Environment**
