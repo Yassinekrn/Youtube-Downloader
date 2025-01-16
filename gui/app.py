@@ -13,6 +13,13 @@ import io
 import threading
 import os
 
+# Define a dictionary to map user-friendly labels to internal quality settings
+QUALITY_MAPPING = {
+    "Low (up to 480p)": "Low",
+    "Medium (up to 720p)": "Medium",
+    "High (best possible)": "High"
+}
+
 class VideoDownloaderApp:
     def __init__(self, root):
         self.root = root
@@ -109,6 +116,18 @@ class VideoDownloaderApp:
         self.format_dropdown.pack(side=LEFT, fill=X, expand=True)
         self.format_dropdown.bind("<<ComboboxSelected>>", self.on_format_change)
 
+        self.quality_label = ttk.Label(self.format_frame, text="Quality:")
+        self.quality_label.pack(side=LEFT, padx=(10, 5))
+
+        self.quality_var = tk.StringVar(value="High (best possible)")
+        self.quality_dropdown = ttk.Combobox(
+            self.format_frame,
+            textvariable=self.quality_var,
+            values=list(QUALITY_MAPPING.keys()),
+            state="readonly"
+        )
+        self.quality_dropdown.pack(side=LEFT, padx=5, fill=X, expand=True)
+
         # Download Controls Frame
         self.controls_frame = ttk.Frame(self.main_container)
         self.controls_frame.pack(fill=X, pady=5)
@@ -122,8 +141,7 @@ class VideoDownloaderApp:
             self.controls_frame,
             text="Download",
             command=self.download_video,
-            bootstyle="danger",
-            style="primary.TButton",
+            bootstyle="success",
             width=20
         )
         self.download_button.pack(side=LEFT, padx=5)
@@ -133,6 +151,7 @@ class VideoDownloaderApp:
             text="Cancel",
             command=self.cancel_download,
             state="disabled",
+            bootstyle="danger",
             width=20
         )
         self.cancel_button.pack(side=LEFT, padx=5)
@@ -216,6 +235,7 @@ class VideoDownloaderApp:
 
         # Set up periodic progress check
         self.root.after(100, self.check_progress)
+        self.info_fetched = False  # Track whether video info is fetched
 
     def browse_directory(self):
         """Open directory browser dialog"""
@@ -256,20 +276,29 @@ class VideoDownloaderApp:
 
     def update_progress_display(self, progress_info: dict):
         """Update the progress display with download information"""
-        if progress_info['status'] == 'downloading':
-            # Update progress bar
-            self.progress_var.set(progress_info['percentage'])
+        status = progress_info.get('status', '')
+
+        if status == 'downloading':
+            # If it's actually downloading, enable the Cancel button (if disabled).
             
-            # Update status labels
-            downloaded = self.format_size(progress_info['downloaded_bytes'])
-            total = self.format_size(progress_info['total_bytes'])
-            speed = self.format_speed(progress_info['speed'])
-            eta = self.format_time(progress_info['eta'])
+            self.cancel_button.config(state="normal")
+
+            # Update progress bar and labels
+            self.progress_var.set(progress_info.get('percentage', 0))
+            downloaded = self.format_size(progress_info.get('downloaded_bytes', 0))
+            total = self.format_size(progress_info.get('total_bytes', 0))
+            speed = self.format_speed(progress_info.get('speed', 0))
+            
+            eta_seconds = progress_info.get('eta', None)
+            if eta_seconds is None:
+                eta_str = "N/A"
+            else:
+                eta_str = self.format_time(eta_seconds)
             
             self.progress_label.config(
-                text=f"Downloaded: {downloaded} / {total} ({progress_info['percentage']:.1f}%)"
+            text=f"Downloaded: {downloaded} / {total} ({progress_info.get('percentage', 0):.1f}%)"
             )
-            self.speed_label.config(text=f"Speed: {speed} • ETA: {eta}")
+            self.speed_label.config(text=f"Speed: {speed} • ETA: {eta_str}")
 
     def handle_download_complete(self, result: dict):
         """Handle download completion"""
@@ -280,6 +309,7 @@ class VideoDownloaderApp:
         self.cancel_button.config(state="disabled")
         self.log_message("Download completed successfully!", "SUCCESS")
         self.log_message(f"File saved to: {result['filepath']}", "SUCCESS")
+        self.info_fetched = False  # Reset info fetched flag
 
     def handle_download_error(self, error: str):
         """Handle download error"""
@@ -289,6 +319,7 @@ class VideoDownloaderApp:
         self.download_button.config(state="normal")
         self.cancel_button.config(state="disabled")
         self.log_message(f"Error during download: {error}", "ERROR")
+        self.info_fetched = False  # Reset info fetched flagc
 
     def check_progress(self):
         """Check for progress updates from the download manager"""
@@ -317,7 +348,7 @@ class VideoDownloaderApp:
         if not url:
             self.log_message("Please enter a YouTube URL.", "ERROR")
             return
-        
+
         # Start a new thread to fetch video information
         threading.Thread(target=self.fetch_video_info_thread, args=(url,)).start()
 
@@ -363,27 +394,40 @@ class VideoDownloaderApp:
                 self.thumbnail_label.image = photo
             
             self.log_message("Video information fetched successfully.")
+            self.info_fetched = True
         
         except Exception as e:
             self.log_message(f"Error fetching video information: {str(e)}", "ERROR")
 
     def download_video(self):
+        """Download video with selected format and quality"""
         url = self.url_entry.get().strip()
+        if not url:
+            self.log_message("Please enter a YouTube URL.", "ERROR")
+            return
+
+        # Automatically fetch info if it hasn't been fetched yet
+        if not self.info_fetched:
+            self.fetch_video_info()
+
         output_dir = self.output_entry.get().strip()
         format_display_value = self.format_var.get()
         format = self.format_mapping.get(format_display_value, "video+audio")
-        
-        if not url or not output_dir:
-            self.log_message("Please fill in both the YouTube URL and Save Location.", "ERROR")
-            return
-        
-        self.log_message("Starting download...")
+
+        # Map the user-friendly quality label to the internal value
+        quality_label = self.quality_var.get()
+        selected_quality = QUALITY_MAPPING.get(quality_label, "High")
+
+        # Show "Initiating download..."
+        self.progress_label.config(text="Initiating download...")
+        self.log_message("Initiating download...", "INFO")
+
+        # Disable Download button, keep Cancel disabled until actual download starts
         self.download_button.config(state="disabled")
-        self.cancel_button.config(state="normal")
         self.progress_var.set(0)
-        
+
         try:
-            downloader = VideoDownloader(output_dir, format)
+            downloader = VideoDownloader(output_dir, format, selected_quality)
             self.download_manager.start_download(
                 downloader,
                 url,
@@ -395,13 +439,14 @@ class VideoDownloaderApp:
 
     def cancel_download(self):
         """Cancel the current download"""
+        self.cancel_button.config(state="disabled")  # Disable immediately
         self.download_manager.stop_all_downloads()
-        self.download_button.config(state="normal")
-        self.cancel_button.config(state="disabled")
+        self.download_button.config(state="normal")  # Re-enable after stopping
         self.progress_var.set(0)
         self.progress_label.config(text="Download Cancelled")
         self.speed_label.config(text="")
         self.log_message("Download cancelled by user", "INFO")
+        self.info_fetched = False  # Reset info fetched flag
 
     def open_save_location(self):
         """Open the file explorer at the save location"""

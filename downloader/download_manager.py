@@ -31,6 +31,7 @@ class DownloadManager:
                         self.progress_queue.put(('progress', url, progress))
 
                 downloader.set_progress_callback(progress_handler)
+                downloader.set_stop_event(self._stop_event)
                 
                 # Start the download
                 result = downloader.download_video(url)
@@ -74,7 +75,8 @@ class DownloadManager:
         Stop all active downloads.
         """
         self._stop_event.set()
-        for thread in self.active_downloads.values():
+        threads = list(self.active_downloads.values())  # Make a copy to avoid dict size changes
+        for thread in threads:
             thread.join()
         self.active_downloads.clear()
         self._stop_event.clear()

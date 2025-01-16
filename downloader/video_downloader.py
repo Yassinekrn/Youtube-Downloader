@@ -3,22 +3,29 @@ from typing import Callable, Dict, Any, Optional
 import yt_dlp
 import os
 from utils.validator import sanitize_filename, get_available_filename
+import threading
 
 class VideoDownloader:
     """
     Handles downloading videos from YouTube using yt-dlp with progress tracking.
     """
 
-    def __init__(self, output_dir: str, format: str = "video+audio"):
+    def __init__(self, output_dir: str, format: str = "video+audio", quality: str = "High"):
         """
         Initialize the downloader with a target output directory.
         :param output_dir: Directory where files will be saved.
         :param format: Format of the download (video, audio, or video+audio).
+        :param quality: Quality of the download (Low, Medium, High).
         """
         self.output_dir = output_dir
         self.format = format
+        self.quality = quality
         self._progress_callback: Optional[Callable] = None
         self._current_filename: Optional[str] = None
+        self._stop_event = threading.Event()
+
+    def set_stop_event(self, stop_event: threading.Event) -> None:
+        self._stop_event = stop_event
 
     def set_progress_callback(self, callback: Callable[[Dict[str, Any]], None]) -> None:
         """
@@ -33,6 +40,9 @@ class VideoDownloader:
         """
         if self._progress_callback is None:
             return
+
+        if self._stop_event.is_set():
+            raise Exception("Download cancelled by user")
 
         # Prepare progress information
         progress_info = {
@@ -80,16 +90,19 @@ class VideoDownloader:
             # Sanitize the title and get an available filename
             sanitized_title = sanitize_filename(info.get("title", "video"))
             base_filename = f"{sanitized_title}.{ext}"
+            print("Base filename: ", base_filename)
             final_filename = get_available_filename(self.output_dir, base_filename)
             self._current_filename = final_filename
+            print("Final filename: ", final_filename)
             
             logger.info(f"Video title sanitized: {sanitized_title}")
             logger.info(f"Final filename: {final_filename}")
 
             # yt-dlp options
+            final_base_filename = os.path.splitext(final_filename)[0]
             options = {
                 "format": self._get_format_option(),
-                "outtmpl": os.path.join(self.output_dir, f"{sanitized_title}.%(ext)s"),
+                "outtmpl": os.path.join(self.output_dir, f"{final_base_filename}.%(ext)s"),
                 "quiet": False,
                 "no_warnings": False,
                 "nooverwrites": True,
@@ -97,9 +110,17 @@ class VideoDownloader:
                 "merge_output_format": ext,  # Ensure the output format is set to the determined extension
             }
 
-            # Download the video
-            with yt_dlp.YoutubeDL(options) as ydl:
-                ydl.download([url])
+            try:
+                with yt_dlp.YoutubeDL(options) as ydl:
+                    ydl.download([url])
+            except Exception as e:
+                if self._stop_event.is_set():
+                    # Remove partially downloaded files
+                    part_files = [f for f in os.listdir(self.output_dir) if f.startswith(final_base_filename) and f.endswith('.part')]
+                    for part_file in part_files:
+                        os.remove(os.path.join(self.output_dir, part_file))
+                    logger.info("Partially downloaded files removed.")
+                raise e
             
             logger.info("Download completed successfully.")
             
@@ -122,11 +143,24 @@ class VideoDownloader:
         Get the format option for yt-dlp based on the desired format.
         :return: Format option string for yt-dlp.
         """
-        if self.format == "video":
-            return "bestvideo"
-        elif self.format == "audio":
+        if self.format == "audio":
             return "bestaudio"
-        return "bestvideo+bestaudio/best"
+        elif self.format == "video":
+            # Video only, no audio
+            if self.quality == "Low":
+                return "bestvideo[height<=480]"
+            elif self.quality == "Medium":
+                return "bestvideo[height<=720]"
+            else:
+                return "bestvideo"
+        else:
+            # Video + audio
+            if self.quality == "Low":
+                return "bestvideo[height<=480]+bestaudio/best[height<=480]"
+            elif self.quality == "Medium":
+                return "bestvideo[height<=720]+bestaudio/best[height<=720]"
+            else:
+                return "bestvideo+bestaudio/best"
 
     @staticmethod
     def _validate_url(url: str) -> bool:
