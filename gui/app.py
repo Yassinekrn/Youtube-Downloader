@@ -10,6 +10,7 @@ from datetime import datetime
 import requests
 from PIL import Image, ImageTk, ImageDraw
 import io
+import threading
 
 class VideoDownloaderApp:
     def __init__(self, root):
@@ -146,13 +147,22 @@ class VideoDownloaderApp:
         self.video_info_frame.pack(fill=X, padx=5, pady=5)
 
         self.thumbnail_label = ttk.Label(self.video_info_frame)
-        self.thumbnail_label.grid(row=0, column=0, rowspan=2, padx=5, pady=5)
+        self.thumbnail_label.grid(row=0, column=0, rowspan=5, padx=5, pady=2)
 
         self.video_title_label = ttk.Label(self.video_info_frame, text="Title: ", font=("Helvetica", 16, "bold"))
-        self.video_title_label.grid(row=0, column=1, sticky=W)
+        self.video_title_label.grid(row=0, column=1, sticky=W, padx=5, pady=2)
 
         self.video_duration_label = ttk.Label(self.video_info_frame, text="Duration: ", foreground="gray")
-        self.video_duration_label.grid(row=1, column=1, sticky=W)
+        self.video_duration_label.grid(row=1, column=1, sticky=W, padx=5, pady=2)
+
+        self.video_uploader_label = ttk.Label(self.video_info_frame, text="Uploader: ", foreground="gray")
+        self.video_uploader_label.grid(row=2, column=1, sticky=W, padx=5, pady=2)
+
+        self.video_upload_date_label = ttk.Label(self.video_info_frame, text="Upload Date: ", foreground="gray")
+        self.video_upload_date_label.grid(row=3, column=1, sticky=W, padx=5, pady=2)
+
+        self.video_view_count_label = ttk.Label(self.video_info_frame, text="Views: ", foreground="gray")
+        self.video_view_count_label.grid(row=4, column=1, sticky=W, padx=5, pady=2)
 
         # Logging Area
         self.log_frame = ttk.LabelFrame(self.main_container, text="Logs")
@@ -280,7 +290,11 @@ class VideoDownloaderApp:
         if not url:
             self.log_message("Please enter a YouTube URL.", "ERROR")
             return
+        
+        # Start a new thread to fetch video information
+        threading.Thread(target=self.fetch_video_info_thread, args=(url,)).start()
 
+    def fetch_video_info_thread(self, url):
         try:
             with yt_dlp.YoutubeDL() as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -288,9 +302,18 @@ class VideoDownloaderApp:
             title = info.get('title', 'N/A')
             duration = info.get('duration', 0)
             thumbnail_url = info.get('thumbnail', '')
+            uploader = info.get('uploader', 'N/A')
+            upload_date = info.get('upload_date', 'N/A')
+            view_count = info.get('view_count', 0)
+
+            # Format the upload date
+            upload_date = f"{upload_date[:4]}-{upload_date[4:6]}-{upload_date[6:]}" if upload_date != 'N/A' else 'N/A'
             
             self.video_title_label.config(text=f"Title: {title}")
             self.video_duration_label.config(text=f"Duration: {duration // 60}:{duration % 60:02d}")
+            self.video_uploader_label.config(text=f"Uploader: {uploader}")
+            self.video_upload_date_label.config(text=f"Upload Date: {upload_date}")
+            self.video_view_count_label.config(text=f"Views: {view_count}")
             
             if thumbnail_url:
                 response = requests.get(thumbnail_url)
